@@ -1,0 +1,1 @@
+package aoc2021d11p1

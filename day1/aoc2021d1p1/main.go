@@ -1,35 +1,27 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"io"
-	"os"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocio"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocmain"
 )
 
 func main() {
-	if err := solvePuzzle(os.Stdin, os.Stdout); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	aocmain.HandlePuzzle(solvePuzzle)
 }
 
-func solvePuzzle(r io.Reader, w io.Writer) error {
+func solvePuzzle(r io.Reader) (int, error) {
+	pr := aocio.NewPuzzleReader(r)
 	lastDepth := ^uint(0)
 	increases := 0
-	for {
-		var depth uint
-		if _, err := fmt.Fscanf(r, "%d\n", &depth); err != nil {
-			if !errors.Is(err, io.EOF) {
-				return fmt.Errorf("failed to read line: %v", err)
-			}
-			break
-		}
+	for pr.NextNonEmptyLine() {
+		depth := pr.ReadUintLine(10)
 		if depth > lastDepth {
 			increases++
 		}
 		lastDepth = depth
 	}
-	_, _ = fmt.Fprintf(w, "Depth increased %d times\n", increases)
-	return nil
+	return increases, pr.Err()
 }

@@ -1,32 +1,27 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"os"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocio"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocmain"
 )
 
 func main() {
-	if err := solvePuzzle(os.Stdin, os.Stdout); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	aocmain.HandlePuzzle(solvePuzzle)
 }
 
-func solvePuzzle(r io.Reader, w io.Writer) error {
+func solvePuzzle(r io.Reader) (int, error) {
+	pr := aocio.NewPuzzleReader(r)
 	horizontal := uint(0)
 	depth := uint(0)
 	aim := uint(0)
-	for {
-		var command string
-		var amount uint
-		if _, err := fmt.Fscanf(r, "%s %d\n", &command, &amount); err != nil {
-			if !errors.Is(err, io.EOF) {
-				return fmt.Errorf("failed to read line: %v", err)
-			}
-			break
-		}
+	for pr.NextNonEmptyLine() {
+		tr := pr.LineTokenReader()
+		command, _ := tr.NextString(' ')
+		amount, _ := tr.NextUint(aocio.EOLDelim, 10)
 		switch command {
 		case "forward":
 			horizontal += amount
@@ -40,10 +35,9 @@ func solvePuzzle(r io.Reader, w io.Writer) error {
 			}
 			aim -= amount
 		default:
-			return fmt.Errorf("unknown command: %s", command)
+			return 0, fmt.Errorf("unknown command: %s", command)
 		}
 	}
 	area := horizontal * depth
-	_, _ = fmt.Fprintf(w, "Final position:\n  Horizontal: %d\n  Depth: %d\n  Multiplied: %d\n", horizontal, depth, area)
-	return nil
+	return int(area), pr.Err()
 }

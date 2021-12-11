@@ -1,31 +1,23 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"io"
-	"os"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocio"
+	"github.com/AdventOfCode894/aoc2021/internal/aocmain"
 )
 
 func main() {
-	if err := solvePuzzle(os.Stdin, os.Stdout); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	aocmain.HandlePuzzle(solvePuzzle)
 }
 
-func solvePuzzle(r io.Reader, w io.Writer) error {
+func solvePuzzle(r io.Reader) (int, error) {
+	pr := aocio.NewPuzzleReader(r)
 	ring := newMeasurementRing(3)
 	lastSum := ^uint(0)
 	increases := 0
-	for {
-		var depth uint
-		if _, err := fmt.Fscanf(r, "%d\n", &depth); err != nil {
-			if !errors.Is(err, io.EOF) {
-				return fmt.Errorf("failed to read line: %v", err)
-			}
-			break
-		}
+	for pr.NextNonEmptyLine() {
+		depth := pr.ReadUintLine(10)
 		ring.Record(depth)
 		if ring.IsFull() {
 			sum := ring.Sum()
@@ -35,6 +27,5 @@ func solvePuzzle(r io.Reader, w io.Writer) error {
 			lastSum = sum
 		}
 	}
-	_, _ = fmt.Fprintf(w, "Sliding depth increased %d times\n", increases)
-	return nil
+	return increases, pr.Err()
 }
