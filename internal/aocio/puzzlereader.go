@@ -21,7 +21,7 @@ type PuzzleReader struct {
 
 type TokenReader struct {
 	b   []byte
-	err error
+	err *error
 }
 
 const MaxPuzzleLineLen = 1 * 1024 * 1024
@@ -90,9 +90,9 @@ func (pr *PuzzleReader) LineReader() *bytes.Reader {
 func (pr *PuzzleReader) LineTokenReader() *TokenReader {
 	pr.ensureScanned()
 	if err := pr.Err(); err != nil {
-		return &TokenReader{b: nil, err: err}
+		return &TokenReader{b: nil, err: &err}
 	}
-	return &TokenReader{b: pr.s.Bytes()}
+	return &TokenReader{b: pr.s.Bytes(), err: &pr.err}
 }
 
 func (pr *PuzzleReader) LineRunes() []rune {
@@ -111,7 +111,15 @@ func (pr *PuzzleReader) LineString() string {
 	return pr.s.Text()
 }
 
-func NewTokenReader(b []byte) *TokenReader {
+func (pr *PuzzleReader) LineLen() int {
+	pr.ensureScanned()
+	if pr.Err() != nil {
+		return 0
+	}
+	return len(pr.s.Bytes())
+}
+
+func (pr *PuzzleReader) NewTokenReader(b []byte) *TokenReader {
 	return &TokenReader{b: b}
 }
 
@@ -132,12 +140,8 @@ func (pr *PuzzleReader) IsLineEmpty() bool {
 	return true
 }
 
-func (tr *TokenReader) Err() error {
-	return tr.err
-}
-
 func (tr *TokenReader) NextRune() (rune, bool) {
-	if tr.err != nil {
+	if *tr.err != nil {
 		return utf8.RuneError, false
 	}
 	if len(tr.b) < 1 {
@@ -145,17 +149,20 @@ func (tr *TokenReader) NextRune() (rune, bool) {
 	}
 	c, sz := utf8.DecodeRune(tr.b)
 	if c == utf8.RuneError {
-		tr.err = errors.New("input file contained invalid UTF-8")
+		*tr.err = errors.New("input file contained invalid UTF-8")
 		return utf8.RuneError, false
 	}
 	tr.b = tr.b[sz:]
 	return c, true
 }
 
-const EOLDelim rune = 0
+const (
+	EOLDelim rune = utf8.MaxRune + 1
+	NoDelim  rune = utf8.MaxRune + 2
+)
 
 func (tr *TokenReader) NextToken(delim rune) ([]byte, bool) {
-	if tr.err != nil {
+	if *tr.err != nil {
 		return nil, false
 	}
 	if len(tr.b) < 1 {
@@ -163,9 +170,12 @@ func (tr *TokenReader) NextToken(delim rune) ([]byte, bool) {
 	}
 	var idx int
 	skip := 0
-	if delim == EOLDelim {
+	switch delim {
+	case EOLDelim:
 		idx = len(tr.b)
-	} else {
+	case NoDelim:
+		_, idx = utf8.DecodeRune(tr.b)
+	default:
 		idx = bytes.IndexRune(tr.b, delim)
 		if idx < 0 {
 			idx = len(tr.b)
@@ -184,14 +194,14 @@ func (tr *TokenReader) NextString(delim rune) (string, bool) {
 }
 
 func (tr *TokenReader) ConsumeRepeating(cutset string) {
-	if tr.err != nil {
+	if *tr.err != nil {
 		return
 	}
 	tr.b = bytes.TrimLeft(tr.b, cutset)
 }
 
 func (tr *TokenReader) ConsumeSpaces() {
-	if tr.err != nil {
+	if *tr.err != nil {
 		return
 	}
 	tr.b = bytes.TrimLeftFunc(tr.b, func(c rune) bool {
@@ -200,25 +210,25 @@ func (tr *TokenReader) ConsumeSpaces() {
 }
 
 func (tr *TokenReader) ConsumeString(s string) bool {
-	if tr.err != nil {
+	if *tr.err != nil {
 		return false
 	}
 	b := tr.b
 	tr.b = bytes.TrimPrefix(tr.b, []byte(s))
 	if len(tr.b) >= len(b) {
-		tr.err = fmt.Errorf("failed to consume fixed string \"%s\"", s)
+		*tr.err = fmt.Errorf("failed to consume fixed string \"%s\"", s)
 		return false
 	}
 	return true
 }
 
 func (tr *TokenReader) ConsumeEOL() bool {
-	if tr.err != nil {
+	if *tr.err != nil {
 		return false
 	}
 	tr.ConsumeSpaces()
 	if len(tr.b) > 0 {
-		tr.err = fmt.Errorf("found garbage at end of line: \"%s\"", tr.b)
+		*tr.err = fmt.Errorf("found garbage at end of line: \"%s\"", tr.b)
 		return false
 	}
 	return true
@@ -231,7 +241,7 @@ func (tr *TokenReader) NextUint(delim rune, base int) (uint, bool) {
 	}
 	x, err := strconv.ParseUint(string(token), base, 32)
 	if err != nil {
-		tr.err = err
+		*tr.err = err
 		return 0, false
 	}
 	return uint(x), true
@@ -244,7 +254,7 @@ func (tr *TokenReader) NextInt(delim rune, base int) (int, bool) {
 	}
 	x, err := strconv.ParseInt(string(token), base, 32)
 	if err != nil {
-		tr.err = err
+		*tr.err = err
 		return 0, false
 	}
 	return int(x), true
@@ -258,11 +268,11 @@ func (tr *TokenReader) WalkArray(split rune, f func(b []byte) error) error {
 			break
 		}
 		if err := f(b); err != nil {
-			tr.err = fmt.Errorf("error during array walk: %w", err)
+			*tr.err = fmt.Errorf("error during array walk: %w", err)
 			break
 		}
 	}
-	return tr.err
+	return *tr.err
 }
 
 func (tr *TokenReader) NextIntArray(split rune, term rune, base int) []int {
@@ -270,7 +280,7 @@ func (tr *TokenReader) NextIntArray(split rune, term rune, base int) []int {
 	if !ok {
 		return nil
 	}
-	pieces := NewTokenReader(token)
+	pieces := &TokenReader{b: token, err: tr.err}
 	var out []int
 	if err := pieces.WalkArray(split, func(b []byte) error {
 		x, err := strconv.ParseInt(string(token), base, 32)
@@ -290,14 +300,30 @@ func (tr *TokenReader) NextUintArray(split rune, term rune, base int) []uint {
 	if !ok {
 		return nil
 	}
-	pieces := NewTokenReader(token)
+	pieces := &TokenReader{b: token, err: tr.err}
 	var out []uint
 	if err := pieces.WalkArray(split, func(b []byte) error {
-		x, err := strconv.ParseUint(string(token), base, 32)
+		x, err := strconv.ParseUint(string(b), base, 32)
 		if err != nil {
 			return err
 		}
 		out = append(out, uint(x))
+		return nil
+	}); err != nil {
+		return nil
+	}
+	return out
+}
+
+func (tr *TokenReader) NextStringArray(split rune, term rune) []string {
+	token, ok := tr.NextToken(term)
+	if !ok {
+		return nil
+	}
+	pieces := &TokenReader{b: token, err: tr.err}
+	var out []string
+	if err := pieces.WalkArray(split, func(b []byte) error {
+		out = append(out, string(b))
 		return nil
 	}); err != nil {
 		return nil
@@ -310,9 +336,6 @@ func (pr *PuzzleReader) readFullLine(f func(tr *TokenReader)) {
 	tr.ConsumeSpaces()
 	f(tr)
 	tr.ConsumeEOL()
-	if err := tr.Err(); err != nil {
-		pr.err = err
-	}
 }
 
 func (pr *PuzzleReader) ReadIntLine(base int) int {
@@ -345,4 +368,40 @@ func (pr *PuzzleReader) ReadUintArrayLine(split rune, base int) []uint {
 		x = tr.NextUintArray(split, EOLDelim, base)
 	})
 	return x
+}
+
+func (pr *PuzzleReader) ReadStringArrayLine(split rune) []string {
+	var x []string
+	pr.readFullLine(func(tr *TokenReader) {
+		x = tr.NextStringArray(split, EOLDelim)
+	})
+	return x
+}
+
+func (pr *PuzzleReader) Read2DIntArray(split rune, base int) (arr [][]int, width int, height int) {
+	for !pr.IsLineEmpty() {
+		row := pr.ReadIntArrayLine(split, base)
+		arr = append(arr, row)
+		if !pr.NextLine() {
+			break
+		}
+	}
+	if len(arr) < 1 || pr.Err() != nil {
+		return nil, 0, 0
+	}
+	return arr, len(arr[0]), len(arr)
+}
+
+func (pr *PuzzleReader) Read2DUintArray(split rune, base int) (arr [][]uint, width int, height int) {
+	for !pr.IsLineEmpty() {
+		row := pr.ReadUintArrayLine(split, base)
+		arr = append(arr, row)
+		if !pr.NextLine() {
+			break
+		}
+	}
+	if len(arr) < 1 || pr.Err() != nil {
+		return nil, 0, 0
+	}
+	return arr, len(arr[0]), len(arr)
 }

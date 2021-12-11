@@ -1,50 +1,22 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"io"
-	"os"
 	"sort"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocio"
+	"github.com/AdventOfCode894/aoc2021/internal/aocmain"
 )
 
 func main() {
-	var in io.Reader = os.Stdin
-	if len(os.Args) == 2 {
-		var err error
-		if in, err = os.Open(os.Args[1]); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Error attempting to open input file \"%s\": %v", os.Args[0], err)
-		}
-	}
-	if err := solvePuzzle(in, os.Stdout); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	aocmain.HandlePuzzle(solvePuzzle)
 }
 
-func solvePuzzle(r io.Reader, w io.Writer) error {
-	var heights [][]uint
-	var newRow []uint
-	row := 0
-	for {
-		var c rune
-		if _, err := fmt.Fscanf(r, "%c", &c); err != nil {
-			if !errors.Is(err, io.EOF) {
-				return fmt.Errorf("failed to read height: %v", err)
-			}
-			break
-		}
-		if c == '\n' {
-			heights = append(heights, newRow)
-			newRow = nil
-			row++
-			continue
-		}
-		height := uint(c - '0')
-		newRow = append(newRow, height)
-	}
-	if len(newRow) > 0 {
-		heights = append(heights, newRow)
+func solvePuzzle(r io.Reader) (int, error) {
+	pr := aocio.NewPuzzleReader(r)
+	heights, _, _ := pr.Read2DUintArray(aocio.NoDelim, 10)
+	if err := pr.Err(); err != nil {
+		return 0, err
 	}
 
 	var basinSizes []uint
@@ -80,9 +52,7 @@ func solvePuzzle(r io.Reader, w io.Writer) error {
 	})
 
 	largestBasinMul := basinSizes[0] * basinSizes[1] * basinSizes[2]
-
-	_, _ = fmt.Fprintf(w, "Largest three basins multiplied: %d\n", largestBasinMul)
-	return nil
+	return int(largestBasinMul), nil
 }
 
 type coordinate struct {

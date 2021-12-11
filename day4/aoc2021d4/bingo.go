@@ -3,7 +3,7 @@ package aoc2021d4
 import "fmt"
 
 type BingoCard struct {
-	cells  [][]uint64 // Row-major
+	cells  [][]uint // Row-major
 	marked [][]bool
 	won    bool
 
@@ -13,7 +13,7 @@ type BingoCard struct {
 	// Caches for performance enhancement
 	rowMarks      []int
 	colMarks      []int
-	cellLocations map[uint64]cardLocation
+	cellLocations map[uint]cardLocation
 }
 
 type cardLocation struct {
@@ -21,14 +21,14 @@ type cardLocation struct {
 	col int
 }
 
-func newBingoCard(cells []uint64, width int) (*BingoCard, error) {
+func newBingoCard(cells []uint, width int) (*BingoCard, error) {
 	if len(cells)%width != 0 {
 		return nil, fmt.Errorf("bingo card has impossible geometry: width = %d but cell count = %d", width, len(cells))
 	}
 	height := len(cells) / width
 
 	bc := &BingoCard{
-		cells:  make([][]uint64, height),
+		cells:  make([][]uint, height),
 		marked: make([][]bool, height),
 
 		width:  width,
@@ -36,10 +36,10 @@ func newBingoCard(cells []uint64, width int) (*BingoCard, error) {
 
 		rowMarks:      make([]int, height),
 		colMarks:      make([]int, width),
-		cellLocations: make(map[uint64]cardLocation),
+		cellLocations: make(map[uint]cardLocation),
 	}
 	for row := 0; row < height; row++ {
-		bc.cells[row] = make([]uint64, width)
+		bc.cells[row] = make([]uint, width)
 		bc.marked[row] = make([]bool, width)
 		for col := 0; col < width; col++ {
 			cell := cells[0]
@@ -52,7 +52,7 @@ func newBingoCard(cells []uint64, width int) (*BingoCard, error) {
 	return bc, nil
 }
 
-func (bc *BingoCard) Mark(draw uint64) (winner bool) {
+func (bc *BingoCard) Mark(draw uint) (winner bool) {
 	loc, found := bc.cellLocations[draw]
 	if found && !bc.marked[loc.row][loc.col] {
 		bc.marked[loc.row][loc.col] = true
@@ -67,8 +67,8 @@ func (bc *BingoCard) Mark(draw uint64) (winner bool) {
 
 func (bc *BingoCard) Won() bool { return bc.won }
 
-func (bc *BingoCard) UnmarkedSum() uint64 {
-	sum := uint64(0)
+func (bc *BingoCard) UnmarkedSum() uint {
+	sum := uint(0)
 	for row := 0; row < bc.height; row++ {
 		for col := 0; col < bc.width; col++ {
 			if !bc.marked[row][col] {

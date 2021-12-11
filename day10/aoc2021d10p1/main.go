@@ -1,32 +1,22 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io"
-	"os"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocio"
+	"github.com/AdventOfCode894/aoc2021/internal/aocmain"
 )
 
 func main() {
-	var in io.Reader = os.Stdin
-	if len(os.Args) == 2 {
-		var err error
-		if in, err = os.Open(os.Args[1]); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Error attempting to open input file \"%s\": %v", os.Args[0], err)
-		}
-	}
-	if err := solvePuzzle(in, os.Stdout); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	aocmain.HandlePuzzle(solvePuzzle)
 }
 
-func solvePuzzle(r io.Reader, w io.Writer) error {
-	scanner := bufio.NewScanner(r)
+func solvePuzzle(r io.Reader) (int, error) {
 	score := 0
-	for scanner.Scan() {
-		line := scanner.Text()
-		c, ok := parseNavigation(line)
+	pr := aocio.NewPuzzleReader(r)
+	for pr.NextNonEmptyLine() {
+		c, ok := parseNavigation(pr.LineRunes())
 		if !ok {
 			switch c {
 			case ')':
@@ -38,17 +28,19 @@ func solvePuzzle(r io.Reader, w io.Writer) error {
 			case '>':
 				score += 25137
 			default:
-				return fmt.Errorf("unknown first illegal rune: %c", c)
+				return 0, fmt.Errorf("unknown first illegal rune: %c", c)
 			}
 		}
 	}
-	_, _ = fmt.Fprintln(w, score)
-	return nil
+	if err := pr.Err(); err != nil {
+		return 0, err
+	}
+	return score, nil
 }
 
-func parseNavigation(s string) (rune, bool) {
+func parseNavigation(s []rune) (rune, bool) {
 	var stack []rune
-	for _, c := range []rune(s) {
+	for _, c := range s {
 		var expected rune
 		switch c {
 		case '(', '[', '{', '<':

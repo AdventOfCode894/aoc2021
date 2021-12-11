@@ -6,7 +6,7 @@ type diagnosticTreeNode struct {
 	child        [2]*diagnosticTreeNode
 }
 
-func (n *diagnosticTreeNode) Insert(x uint64, bitLen int) {
+func (n *diagnosticTreeNode) Insert(x uint, bitLen int) {
 	n.subtreeCount++
 
 	if bitLen < 1 {
@@ -24,11 +24,11 @@ func (n *diagnosticTreeNode) Insert(x uint64, bitLen int) {
 	n.child[b].Insert(x, bitLen)
 }
 
-func (n *diagnosticTreeNode) FindRating(mostPopularPrefix bool) uint64 {
+func (n *diagnosticTreeNode) FindRating(mostPopularPrefix bool) uint {
 	return n.findRatingRecurse(mostPopularPrefix, 0)
 }
 
-func (n *diagnosticTreeNode) findRatingRecurse(mostPopularPrefix bool, partial uint64) uint64 {
+func (n *diagnosticTreeNode) findRatingRecurse(mostPopularPrefix bool, partial uint) uint {
 	if n.isValue {
 		return partial
 	}
@@ -55,6 +55,6 @@ func (n *diagnosticTreeNode) findRatingRecurse(mostPopularPrefix bool, partial u
 	} else {
 		idx = leastPopular
 	}
-	partial = (partial << 1) | uint64(idx)
+	partial = (partial << 1) | uint(idx)
 	return n.child[idx].findRatingRecurse(mostPopularPrefix, partial)
 }

@@ -1,8 +1,7 @@
 package main
 
 import (
-	"errors"
-	"fmt"
+	"github.com/AdventOfCode894/aoc2021/internal/aocio"
 	"io"
 
 	"github.com/AdventOfCode894/aoc2021/internal/aocmain"
@@ -13,28 +12,10 @@ func main() {
 }
 
 func solvePuzzle(r io.Reader) (int, error) {
-	var energies [][]uint
-	var newRow []uint
-	row := 0
-	for {
-		var c rune
-		if _, err := fmt.Fscanf(r, "%c", &c); err != nil {
-			if !errors.Is(err, io.EOF) {
-				return 0, fmt.Errorf("failed to read energy: %v", err)
-			}
-			break
-		}
-		if c == '\n' {
-			energies = append(energies, newRow)
-			newRow = nil
-			row++
-			continue
-		}
-		energy := uint(c - '0')
-		newRow = append(newRow, energy)
-	}
-	if len(newRow) > 0 {
-		energies = append(energies, newRow)
+	pr := aocio.NewPuzzleReader(r)
+	energies, _, _ := pr.Read2DUintArray(aocio.NoDelim, 10)
+	if err := pr.Err(); err != nil {
+		return 0, err
 	}
 
 	flashes := make([][]bool, len(energies))

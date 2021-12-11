@@ -1,33 +1,23 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"sort"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocio"
+	"github.com/AdventOfCode894/aoc2021/internal/aocmain"
 )
 
 func main() {
-	var in io.Reader = os.Stdin
-	if len(os.Args) == 2 {
-		var err error
-		if in, err = os.Open(os.Args[1]); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Error attempting to open input file \"%s\": %v", os.Args[0], err)
-		}
-	}
-	if err := solvePuzzle(in, os.Stdout); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	aocmain.HandlePuzzle(solvePuzzle)
 }
 
-func solvePuzzle(r io.Reader, w io.Writer) error {
-	scanner := bufio.NewScanner(r)
+func solvePuzzle(r io.Reader) (int, error) {
 	var scores []int
-	for scanner.Scan() {
-		line := scanner.Text()
-		_, stack, ok := parseNavigation(line)
+	pr := aocio.NewPuzzleReader(r)
+	for pr.NextNonEmptyLine() {
+		stack, ok := parseNavigation(pr.LineRunes())
 		if ok {
 			score := 0
 			for i := len(stack) - 1; i >= 0; i-- {
@@ -42,21 +32,23 @@ func solvePuzzle(r io.Reader, w io.Writer) error {
 				case '<':
 					score += 4
 				default:
-					return fmt.Errorf("unknown completion stack rune: %c", stack[i])
+					return 0, fmt.Errorf("unknown completion stack rune: %c", stack[i])
 				}
 			}
 			scores = append(scores, score)
 		}
 	}
+	if err := pr.Err(); err != nil {
+		return 0, err
+	}
 	sort.Ints(scores)
 	middleScore := scores[len(scores)/2]
-	_, _ = fmt.Fprintln(w, middleScore)
-	return nil
+	return middleScore, nil
 }
 
-func parseNavigation(s string) (rune, []rune, bool) {
+func parseNavigation(s []rune) ([]rune, bool) {
 	var stack []rune
-	for _, c := range []rune(s) {
+	for _, c := range s {
 		var expected rune
 		switch c {
 		case '(', '[', '{', '<':
@@ -70,14 +62,14 @@ func parseNavigation(s string) (rune, []rune, bool) {
 		case '>':
 			expected = '<'
 		default:
-			return c, nil, false
+			return nil, false
 		}
 		if expected > 0 {
 			if len(stack) < 1 || stack[len(stack)-1] != expected {
-				return c, nil, false
+				return nil, false
 			}
 			stack = stack[:len(stack)-1]
 		}
 	}
-	return 0, stack, true
+	return stack, true
 }

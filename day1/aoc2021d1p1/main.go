@@ -13,9 +13,9 @@ func main() {
 }
 
 func solvePuzzle(r io.Reader) (int, error) {
-	pr := aocio.NewPuzzleReader(r)
 	lastDepth := ^uint(0)
 	increases := 0
+	pr := aocio.NewPuzzleReader(r)
 	for pr.NextNonEmptyLine() {
 		depth := pr.ReadUintLine(10)
 		if depth > lastDepth {

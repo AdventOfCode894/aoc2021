@@ -1,41 +1,29 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"io"
-	"os"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocio"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocmain"
 )
 
 func main() {
-	var in io.Reader = os.Stdin
-	if len(os.Args) == 2 {
-		var err error
-		if in, err = os.Open(os.Args[1]); err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Error attempting to open input file \"%s\": %v", os.Args[0], err)
-		}
-	}
-	if err := solvePuzzle(in, os.Stdout); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	aocmain.HandlePuzzle(solvePuzzle)
 }
 
 const reproductionAge = 6
 const newFishAge = 8
 const simulationDays = 80
 
-func solvePuzzle(r io.Reader, w io.Writer) error {
+func solvePuzzle(r io.Reader) (int, error) {
 	fishAges := make([]uint, newFishAge+1)
-	for {
-		var age uint
-		if _, err := fmt.Fscanf(r, "%d", &age); err != nil {
-			if !errors.Is(err, io.EOF) {
-				return fmt.Errorf("failed to read age: %v", err)
-			}
-			break
-		}
+	pr := aocio.NewPuzzleReader(r)
+	for _, age := range pr.ReadUintArrayLine(',', 10) {
 		fishAges[age]++
+	}
+	if pr.Err() != nil {
+		return 0, pr.Err()
 	}
 
 	for i := 0; i < simulationDays; i++ {
@@ -49,6 +37,5 @@ func solvePuzzle(r io.Reader, w io.Writer) error {
 	for _, fish := range fishAges {
 		totalFish += fish
 	}
-	_, _ = fmt.Fprintf(w, "Total fish after %d days: %d\n", simulationDays, totalFish)
-	return nil
+	return int(totalFish), nil
 }

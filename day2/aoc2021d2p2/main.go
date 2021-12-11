@@ -14,14 +14,15 @@ func main() {
 }
 
 func solvePuzzle(r io.Reader) (int, error) {
-	pr := aocio.NewPuzzleReader(r)
 	horizontal := uint(0)
 	depth := uint(0)
 	aim := uint(0)
+	pr := aocio.NewPuzzleReader(r)
 	for pr.NextNonEmptyLine() {
 		tr := pr.LineTokenReader()
 		command, _ := tr.NextString(' ')
 		amount, _ := tr.NextUint(aocio.EOLDelim, 10)
+		tr.ConsumeEOL()
 		switch command {
 		case "forward":
 			horizontal += amount
@@ -38,6 +39,9 @@ func solvePuzzle(r io.Reader) (int, error) {
 			return 0, fmt.Errorf("unknown command: %s", command)
 		}
 	}
+	if pr.Err() != nil {
+		return 0, pr.Err()
+	}
 	area := horizontal * depth
-	return int(area), pr.Err()
+	return int(area), nil
 }

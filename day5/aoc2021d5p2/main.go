@@ -1,17 +1,15 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"io"
-	"os"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocio"
+
+	"github.com/AdventOfCode894/aoc2021/internal/aocmain"
 )
 
 func main() {
-	if err := solvePuzzle(os.Stdin, os.Stdout); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	aocmain.HandlePuzzle(solvePuzzle)
 }
 
 type coordinate struct {
@@ -24,16 +22,19 @@ func (c *coordinate) Add(other coordinate) {
 	c.Y += other.Y
 }
 
-func solvePuzzle(r io.Reader, w io.Writer) error {
+func solvePuzzle(r io.Reader) (int, error) {
 	ventMap := make(map[coordinate]uint)
-	for {
+	pr := aocio.NewPuzzleReader(r)
+	for pr.NextNonEmptyLine() {
+		tr := pr.LineTokenReader()
 		var p1, p2 coordinate
-		if _, err := fmt.Fscanf(r, "%d,%d -> %d,%d\n", &p1.X, &p1.Y, &p2.X, &p2.Y); err != nil {
-			if !errors.Is(err, io.EOF) {
-				return fmt.Errorf("failed to read input line: %v", err)
-			}
-			break
-		}
+		p1.X, _ = tr.NextInt(',', 10)
+		p1.Y, _ = tr.NextInt(' ', 10)
+		tr.ConsumeString("->")
+		tr.ConsumeSpaces()
+		p2.X, _ = tr.NextInt(',', 10)
+		p2.Y, _ = tr.NextInt(aocio.EOLDelim, 10)
+		tr.ConsumeEOL()
 
 		var step coordinate
 		if p1.X < p2.X {
@@ -52,6 +53,9 @@ func solvePuzzle(r io.Reader, w io.Writer) error {
 			ventMap[p]++
 		}
 	}
+	if pr.Err() != nil {
+		return 0, pr.Err()
+	}
 
 	dangerousPoints := 0
 	for _, overlap := range ventMap {
@@ -61,6 +65,5 @@ func solvePuzzle(r io.Reader, w io.Writer) error {
 		dangerousPoints++
 	}
 
-	_, _ = fmt.Fprintf(w, "Number of dangerous points: %d\n", dangerousPoints)
-	return nil
+	return dangerousPoints, nil
 }
