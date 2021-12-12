@@ -14,17 +14,9 @@ func main() {
 }
 
 type cave struct {
-	name  string
-	big   bool
-	links []*caveLink
-}
-
-type caveLink struct {
-	dest *cave
-}
-
-type cavePath struct {
-	caves []*cave
+	name    string
+	big     bool
+	tunnels []*cave
 }
 
 func solvePuzzle(r io.Reader) (int, error) {
@@ -44,8 +36,8 @@ func solvePuzzle(r io.Reader) (int, error) {
 		}
 		caves[start].big = isCaveNameBig(start)
 		caves[end].big = isCaveNameBig(end)
-		caves[start].links = append(caves[start].links, &caveLink{dest: caves[end]})
-		caves[end].links = append(caves[end].links, &caveLink{dest: caves[start]})
+		caves[start].tunnels = append(caves[start].tunnels, caves[end])
+		caves[end].tunnels = append(caves[end].tunnels, caves[start])
 	}
 	if err := pr.Err(); err != nil {
 		return 0, err
@@ -54,11 +46,10 @@ func solvePuzzle(r io.Reader) (int, error) {
 		return 0, errors.New("no starting location")
 	}
 
-	visitedSmall := make(map[*cave]struct{})
-	visitedBig := make(map[*cave]struct{})
-	paths := allPaths(caves["start"], visitedSmall, visitedBig, nil)
+	visited := make(map[*cave]struct{})
+	paths := allPaths(caves["start"], visited)
 
-	return len(paths), nil
+	return paths, nil
 }
 
 func isCaveNameBig(s string) bool {
@@ -70,31 +61,20 @@ func isCaveNameBig(s string) bool {
 	return true
 }
 
-func allPaths(start *cave, visitedSmall map[*cave]struct{}, visitedBig map[*cave]struct{}, partialPath []*cave) []*cavePath {
-	if start.name == "end" {
-		partialPath = append(partialPath, start)
-		pathCopy := make([]*cave, len(partialPath))
-		copy(pathCopy, partialPath)
-		return []*cavePath{{caves: pathCopy}}
+func allPaths(c *cave, visited map[*cave]struct{}) int {
+	if c.name == "end" {
+		return 1
 	}
-	if start.big {
-		if _, visited := visitedBig[start]; visited {
-			return nil
+	if !c.big {
+		if _, v := visited[c]; v {
+			return 0
 		}
-		visitedBig[start] = struct{}{}
-		defer func() { delete(visitedBig, start) }()
-	} else {
-		if _, visited := visitedSmall[start]; visited {
-			return nil
-		}
-		visitedBig = make(map[*cave]struct{})
-		visitedSmall[start] = struct{}{}
-		defer func() { delete(visitedSmall, start) }()
+		visited[c] = struct{}{}
+		defer func() { delete(visited, c) }()
 	}
-	var paths []*cavePath
-	for _, next := range start.links {
-		newPaths := allPaths(next.dest, visitedSmall, visitedBig, append(partialPath, start))
-		paths = append(paths, newPaths...)
+	var paths int
+	for _, next := range c.tunnels {
+		paths += allPaths(next, visited)
 	}
 	return paths
 }
