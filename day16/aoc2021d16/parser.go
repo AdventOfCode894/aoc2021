@@ -13,10 +13,14 @@ const ExpressionValueBits = 64
 
 var ErrExpressionOverflow = errors.New("expression value overflow")
 
-func EvaluateExpression(r io.Reader) (value ExpressionValue, versionSum uint64, err error) {
+type ExpressionParser struct {
+	bp bufPool
+}
+
+func (p *ExpressionParser) Evaluate(r io.Reader) (value ExpressionValue, versionSum uint64, err error) {
 	br := (*bitioReader)(bitio.NewReader(r))
 
-	value, versionSum, err = parseOnePacket(br)
+	value, versionSum, err = p.parseOnePacket(br)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -37,9 +41,7 @@ const (
 	equalTo
 )
 
-const minPacketLength = 3 + 3 + 5
-
-func parseOnePacket(br bitReader) (ExpressionValue, uint64, error) {
+func (p *ExpressionParser) parseOnePacket(br bitReader) (ExpressionValue, uint64, error) {
 	versionSum := br.ReadBits(3)
 	packetType := packetTypeID(br.ReadBits(3))
 	if err := br.Err(); err != nil {
@@ -47,13 +49,13 @@ func parseOnePacket(br bitReader) (ExpressionValue, uint64, error) {
 	}
 
 	if packetType == literalValueType {
-		v, err := parseLiteralValue(br)
+		v, err := p.parseLiteralValue(br)
 		if err != nil {
 			return 0, 0, err
 		}
 		return v, versionSum, nil
 	} else {
-		v, vs, err := parseOperator(br, packetType)
+		v, vs, err := p.parseOperator(br, packetType)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -62,7 +64,7 @@ func parseOnePacket(br bitReader) (ExpressionValue, uint64, error) {
 	}
 }
 
-func parseLiteralValue(br bitReader) (ExpressionValue, error) {
+func (*ExpressionParser) parseLiteralValue(br bitReader) (ExpressionValue, error) {
 	v := ExpressionValue(0)
 	readBits := 0
 	for {
@@ -81,20 +83,23 @@ func parseLiteralValue(br bitReader) (ExpressionValue, error) {
 	return v, nil
 }
 
-func parseOperator(br bitReader, packetType packetTypeID) (ExpressionValue, uint64, error) {
+func (p *ExpressionParser) parseOperator(br bitReader, packetType packetTypeID) (ExpressionValue, uint64, error) {
 	lengthTypeID := br.ReadBits(1)
 
-	const estimatedPacketCount = 10
-	subValues := make([]ExpressionValue, 0, estimatedPacketCount)
+	subValues := p.bp.MakeOpValueBuffer()
+	defer func() { p.bp.ReturnOpValueBuffer(subValues) }()
+
 	versionSum := uint64(0)
 	if lengthTypeID == 0 {
 		subBitLength := br.ReadBits(15)
-		lr := &limitedBitReader{
-			R:             br,
-			RemainingBits: subBitLength,
-		}
+
+		lr := p.bp.MakeLimitedBitReader()
+		defer func() { p.bp.ReturnLimitedBitReader(lr) }()
+		lr.R = br
+		lr.RemainingBits = subBitLength
+
 		for lr.RemainingBits > 0 {
-			v, vs, err := parseOnePacket(lr)
+			v, vs, err := p.parseOnePacket(lr)
 			if err != nil {
 				return 0, 0, err
 			}
@@ -104,7 +109,7 @@ func parseOperator(br bitReader, packetType packetTypeID) (ExpressionValue, uint
 	} else {
 		subCount := br.ReadBits(11)
 		for i := uint64(0); i < subCount; i++ {
-			v, vs, err := parseOnePacket(br)
+			v, vs, err := p.parseOnePacket(br)
 			if err != nil {
 				return 0, 0, err
 			}
@@ -116,14 +121,14 @@ func parseOperator(br bitReader, packetType packetTypeID) (ExpressionValue, uint
 		return 0, 0, errors.New("operation contained no sub-values")
 	}
 
-	v, err := evaluateExpression(packetType, subValues)
+	v, err := p.evaluateOperator(packetType, subValues)
 	if err != nil {
 		return 0, 0, err
 	}
 	return v, versionSum, nil
 }
 
-func evaluateExpression(packetType packetTypeID, subValues []ExpressionValue) (ExpressionValue, error) {
+func (*ExpressionParser) evaluateOperator(packetType packetTypeID, subValues []ExpressionValue) (ExpressionValue, error) {
 	var v ExpressionValue
 	switch packetType {
 	case sumType:

@@ -17,7 +17,8 @@ func main() {
 func solvePuzzle(r io.Reader) (int, error) {
 	hr := hex.NewDecoder(r)
 
-	value, _, err := aoc2021d16.EvaluateExpression(hr)
+	var parser aoc2021d16.ExpressionParser
+	value, _, err := parser.Evaluate(hr)
 	if err != nil {
 		return 0, fmt.Errorf("failed to evaluate expression: %w", err)
 	}
