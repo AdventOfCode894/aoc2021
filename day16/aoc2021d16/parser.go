@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/icza/bitio"
+	"github.com/AdventOfCode894/aoc2021/day16/aoc2021d16/bitio"
 )
 
 type ExpressionValue uint64
@@ -15,12 +15,18 @@ var ErrExpressionOverflow = errors.New("expression value overflow")
 
 type ExpressionParser struct {
 	bp bufPool
+	br bitio.Reader
 }
 
 func (p *ExpressionParser) Evaluate(r io.Reader) (value ExpressionValue, versionSum uint64, err error) {
-	br := (*bitioReader)(bitio.NewReader(r))
+	rbr, ok := r.(bitio.ReaderAndByteReader)
+	if !ok {
+		return 0, 0, errors.New("reader must also be a byte reader")
+	}
 
-	value, versionSum, err = p.parseOnePacket(br)
+	p.br.Init(rbr)
+
+	value, versionSum, err = p.parseOnePacket(&p.br)
 	if err != nil {
 		return 0, 0, err
 	}

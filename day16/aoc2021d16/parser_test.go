@@ -1,6 +1,7 @@
 package aoc2021d16
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/hex"
 	"strings"
@@ -13,10 +14,11 @@ func BenchmarkEvaluateExpression(b *testing.B) {
 	b.Run("Hex", func(b *testing.B) {
 		b.StopTimer()
 		var p ExpressionParser
-		_, _, _ = p.Evaluate(hex.NewDecoder(strings.NewReader(testExpr)))
+		_, _, _ = p.Evaluate(bufio.NewReader(hex.NewDecoder(strings.NewReader(testExpr))))
 		for i := 0; i < b.N; i++ {
+			r := bufio.NewReader(hex.NewDecoder(strings.NewReader(testExpr)))
 			b.StartTimer()
-			_, _, _ = p.Evaluate(hex.NewDecoder(strings.NewReader(testExpr)))
+			_, _, _ = p.Evaluate(r)
 			b.StopTimer()
 		}
 	})
@@ -26,8 +28,9 @@ func BenchmarkEvaluateExpression(b *testing.B) {
 		var p ExpressionParser
 		_, _, _ = p.Evaluate(bytes.NewReader(binExpr))
 		for i := 0; i < b.N; i++ {
+			r := bytes.NewReader(binExpr)
 			b.StartTimer()
-			_, _, _ = p.Evaluate(bytes.NewReader(binExpr))
+			_, _, _ = p.Evaluate(r)
 			b.StopTimer()
 		}
 	})

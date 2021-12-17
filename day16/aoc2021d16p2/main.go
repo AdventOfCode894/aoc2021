@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -15,7 +16,7 @@ func main() {
 }
 
 func solvePuzzle(r io.Reader) (int, error) {
-	hr := hex.NewDecoder(r)
+	hr := bufio.NewReader(hex.NewDecoder(r))
 
 	var parser aoc2021d16.ExpressionParser
 	value, _, err := parser.Evaluate(hr)

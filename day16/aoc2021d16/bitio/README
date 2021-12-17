@@ -1,0 +1,7 @@
+Copied from https://github.com/icza/bitio
+
+Copyright 2021 András Belicza
+
+Licensed under Apache-2.0 (see LICENSE)
+
+This is just the relevant extracted code, with optimized instantiation. Don't use this version!

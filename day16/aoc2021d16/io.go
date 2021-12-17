@@ -2,23 +2,11 @@ package aoc2021d16
 
 import (
 	"errors"
-
-	"github.com/icza/bitio"
 )
 
 type bitReader interface {
 	ReadBits(n uint8) uint64
 	Err() error
-}
-
-type bitioReader bitio.Reader
-
-func (r *bitioReader) ReadBits(n uint8) uint64 {
-	return (*bitio.Reader)(r).TryReadBits(n)
-}
-
-func (r *bitioReader) Err() error {
-	return (*bitio.Reader)(r).TryError
 }
 
 type limitedBitReader struct {
