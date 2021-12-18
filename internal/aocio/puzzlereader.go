@@ -156,6 +156,21 @@ func (tr *TokenReader) NextRune() (rune, bool) {
 	return c, true
 }
 
+func (tr *TokenReader) PeekRune() (rune, bool) {
+	if *tr.err != nil {
+		return utf8.RuneError, false
+	}
+	if len(tr.b) < 1 {
+		return utf8.RuneError, false
+	}
+	c, _ := utf8.DecodeRune(tr.b)
+	if c == utf8.RuneError {
+		*tr.err = errors.New("input file contained invalid UTF-8")
+		return utf8.RuneError, false
+	}
+	return c, true
+}
+
 const (
 	EOLDelim rune = utf8.MaxRune + 1
 	NoDelim  rune = utf8.MaxRune + 2
